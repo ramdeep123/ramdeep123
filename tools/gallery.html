@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Figure gallery</title>
+<style>body{background:#0C0A12;color:#ddd;font:12px monospace;margin:0;padding:8px}.row{display:flex;gap:4px;align-items:center;margin-bottom:4px}.row b{width:110px}canvas{width:var(--cw,150px);height:var(--ch,130px);background:#16131F;border-radius:6px}</style></head>
+<body><div id="g"></div>
+<script type="module">
+import { EXERCISES } from '../js/engine/exercises.js';
+import { FigureView, cycleLength, segmentsFor } from '../js/engine/figure.js';
+const g = document.getElementById('g');
+const only = new URLSearchParams(location.search).get('only');
+if (only) { document.body.style.setProperty('--cw','300px'); document.body.style.setProperty('--ch','250px'); }
+for (const ex of EXERCISES.filter(e => !only || only.split(',').includes(e.id))) {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<b>${ex.id}</b>`;
+  g.appendChild(row);
+  const T = cycleLength(ex.anim);
+  for (let i = 0; i < 6; i++) {
+    const c = document.createElement('canvas'); row.appendChild(c);
+    const fv = new FigureView(c, ex.anim, { glow: segmentsFor(ex.muscles.primary) });
+    fv.opts.path = false;
+    fv.time = T * i / 6; fv.draw();
+  }
+}
+document.body.dataset.done = '1';
+</script></body></html>
