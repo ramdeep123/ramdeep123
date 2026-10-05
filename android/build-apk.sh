@@ -13,13 +13,19 @@ VERSION_CODE="${VERSION_CODE:-1}"
 MIN_SDK=24
 TARGET_SDK=34
 
-SDK="${ANDROID_HOME:-/usr/lib/android-sdk}"
+# Use one consistent toolchain: the platform and build-tools of the same SDK
+# (a full Android SDK via ANDROID_HOME, or Debian's /usr/lib/android-sdk).
+SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
+[ -d "$SDK/build-tools" ] || SDK=/usr/lib/android-sdk
 ANDROID_JAR="${ANDROID_JAR:-$(ls -d "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1)}"
-find_tool() { command -v "$1" 2>/dev/null || ls "$SDK"/build-tools/*/"$1" 2>/dev/null | sort -V | tail -1; }
-AAPT2="$(find_tool aapt2)"; DX="$(find_tool dx || true)"; D8="$(find_tool d8 || true)"
+BT="$(ls -d "$SDK"/build-tools/*/ 2>/dev/null | sort -V | tail -1)"
+find_tool() { if [ -x "$BT$1" ]; then echo "$BT$1"; else command -v "$1" 2>/dev/null || true; fi; }
+AAPT2="$(find_tool aapt2)"; DX="$(find_tool dx)"; D8="$(find_tool d8)"
 ZIPALIGN="$(find_tool zipalign)"; APKSIGNER="$(find_tool apksigner)"
 [ -f "$ANDROID_JAR" ] || { echo "android.jar not found (set ANDROID_JAR)"; exit 1; }
+[ -n "$AAPT2" ] && [ -n "$ZIPALIGN" ] && [ -n "$APKSIGNER" ] && { [ -n "$D8" ] || [ -n "$DX" ]; } || { echo "Android build-tools not found"; exit 1; }
 echo "android.jar: $ANDROID_JAR"
+echo "build-tools: $BT"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/assets/www" "$OUT/gen" "$OUT/classes" "$OUT/dex" "$ROOT/release"
