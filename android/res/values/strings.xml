@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KAYA</string>
+    <string name="camera_needed">KAYA needs the camera to check your form. Video stays on your phone.</string>
+    <string name="share_backup">Save your KAYA backup</string>
+</resources>

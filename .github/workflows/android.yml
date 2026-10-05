@@ -1,0 +1,40 @@
+name: Test & build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Install Android build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends android-sdk-platform-23 aapt zipalign apksigner dalvik-exchange
+
+      - name: Restore release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.KAYA_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KAYA_KEYSTORE_PASSWORD }}
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > android/kaya-release.keystore
+          printf 'storeFile=kaya-release.keystore\nstorePassword=%s\nkeyAlias=kaya\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" > android/keystore.properties
+
+      - name: Build signed APK
+        run: VERSION_CODE=${{ github.run_number }} bash android/build-apk.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KAYA-apk
+          path: release/*.apk

@@ -12,14 +12,25 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = () => { voice = pickVoice(); };
 }
 
+const native = () => (window.KayaNative && window.KayaNative.speak ? window.KayaNative : null);
+
 export function setVoiceEnabled(on) {
   enabled = on;
-  if (!on && 'speechSynthesis' in window) speechSynthesis.cancel();
+  if (!on) hush();
+}
+
+/** Stop any speech in progress. */
+export function hush() {
+  try { native()?.stopSpeaking(); } catch (e) { /* ignore */ }
+  try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
 }
 
 /** Speak a cue. urgent=true interrupts whatever is being said. */
 export function say(text, { urgent = false, rate = 1.05 } = {}) {
-  if (!enabled || !('speechSynthesis' in window) || !text) return;
+  if (!enabled || !text) return;
+  const n = native();
+  if (n) { try { n.speak(String(text), !!urgent, rate); } catch (e) { /* ignore */ } return; }
+  if (!('speechSynthesis' in window)) return;
   try {
     if (urgent) speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
@@ -32,7 +43,14 @@ export function say(text, { urgent = false, rate = 1.05 } = {}) {
 }
 
 export function buzz(pattern = 20) {
-  try { navigator.vibrate?.(pattern); } catch (e) { /* optional */ }
+  try {
+    if (window.KayaNative?.vibrate) {
+      const ms = Array.isArray(pattern) ? pattern.filter((_, i) => i % 2 === 0).reduce((a, b) => a + b, 0) : pattern;
+      window.KayaNative.vibrate(ms);
+      return;
+    }
+    navigator.vibrate?.(pattern);
+  } catch (e) { /* optional */ }
 }
 
 let ctx = null;

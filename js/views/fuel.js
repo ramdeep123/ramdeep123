@@ -80,7 +80,7 @@ export function html() {
         ${ring(eat.kcal / e.kcal, { size: 112, stroke: 9, inner: `<span class="num" style="font-size:30px">${fmtNum(eat.kcal)}</span><span class="faint" style="font-size:10.5px">of ${fmtNum(e.kcal)} kcal</span>` })}
         <div class="stack grow" style="gap:6px">
           <span class="h3">${fmtNum(Math.max(0, e.kcal - eat.kcal))} kcal left</span>
-          <span class="muted small">${plan.training ? `Training days get ${fmtNum(e.trainDay - e.target)} extra kcal as carbs around your session.` : 'Rest days run slightly lower so the weekly average stays on target.'}</span>
+          <span class="muted small">${e.trainDay === e.restDay ? `Same target every day — your plan already sits at the BMR floor, so we don\u2019t cycle calories.` : plan.training ? `Training days get ${fmtNum(e.trainDay - e.target)} extra kcal as carbs around your session.` : 'Rest days run slightly lower so the weekly average stays on target.'}</span>
         </div>
       </div>
       <div class="macro">

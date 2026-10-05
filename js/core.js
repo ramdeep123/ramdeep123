@@ -38,8 +38,8 @@ export function energyToday(trainingOverride) {
   const p = profileNow();
   const e = energy(p, state.nutrition?.adjust || 0);
   const t = todayInfo();
-  const training = trainingOverride ?? t.training;
-  return { ...e, training, kcal: training ? e.trainDay : e.restDay, profile: p };
+  const isTraining = trainingOverride ?? t.training;
+  return { ...e, isTraining, kcal: isTraining ? e.trainDay : e.restDay, profile: p };
 }
 
 export function header(eyebrow, title, { back = false } = {}) {

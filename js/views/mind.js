@@ -4,7 +4,7 @@ import { state, update } from '../store.js';
 import { header, isPro, hooks, refresh, todayInfo } from '../core.js';
 import { SESSIONS, sessionById, CORTISOL } from '../engine/breath.js';
 import { Orb } from '../engine/orb.js';
-import { say, tone, buzz } from '../engine/voice.js';
+import { say, tone, buzz, hush } from '../engine/voice.js';
 import { lineChart } from '../charts.js';
 import { esc, fmtDuration, fmtDate, uid, dayKey, DAY } from '../engine/util.js';
 import { icon, openStage, setLayerHTML, toast } from '../ui.js';
@@ -178,7 +178,7 @@ export function openBreath(id) {
   layer = openStage({
     temp: 'mind',
     html: '',
-    onClose() { cancelAnimationFrame(S.raf); S.phase = 'closed'; keepAwake(false); try { speechSynthesis.cancel(); } catch (e) { /* none */ } refresh(); },
+    onClose() { cancelAnimationFrame(S.raf); S.phase = 'closed'; keepAwake(false); hush(); refresh(); },
     actions: {
       rate(el) {
         const v = Number(el.value);
@@ -194,7 +194,7 @@ export function openBreath(id) {
         if (S.voice) say(s.script ? 'Get comfortable.' : 'Follow the orb.', { rate: 0.9 });
         S.raf = requestAnimationFrame(loop);
       },
-      pause(el) { S.paused = !S.paused; el.textContent = S.paused ? 'Resume' : 'Pause'; if (S.paused) try { speechSynthesis.cancel(); } catch (e) { /* none */ } },
+      pause(el) { S.paused = !S.paused; el.textContent = S.paused ? 'Resume' : 'Pause'; if (S.paused) hush(); },
       end() {
         cancelAnimationFrame(S.raf);
         keepAwake(false);
