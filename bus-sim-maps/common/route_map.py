@@ -39,7 +39,11 @@ def main(map_dir, name, cx, cy, span, fpath=None):
     for n, st in enumerate(data["stops"]):
         x, y = px(st["stop_point"])
         d.ellipse([x - 15, y - 15, x + 15, y + 15], fill=(20, 90, 160, 255), outline=(255, 255, 255, 255), width=4)
-        label = f"{n + 1}  {st.get('name_local', '')}  {st['name_en']}".replace("    ", "  ")
+        loc = st.get("name_local", "")
+        label = f"{n + 1}  {st['name_en']}" if not loc or loc.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae").replace("ß", "ss") == st["name_en"] \
+            else f"{n + 1}  {loc}  {st['name_en']}"
+        if loc and loc != st["name_en"] and loc.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae").replace("ß", "ss") == st["name_en"]:
+            label = f"{n + 1}  {loc}"
         tb = d.textbbox((x + 22, y - 20), label, font=f)
         if tb[2] > W - 10:
             tb = d.textbbox((x - 22 - (tb[2] - tb[0]), y - 20), label, font=f)
