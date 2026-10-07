@@ -1,12 +1,12 @@
 # NammaBusSim world maps
 
-Each country map is generated in Blender by a script. That keeps the map reproducible and easy to tweak, and lets it export as a game-ready `.glb` plus a bus-route JSON.
+Each country map is generated in Blender by a script. Shared geometry code lives in [`common/nbs_kit.py`](common/nbs_kit.py). That keeps the map reproducible and easy to tweak, and lets it export as a game-ready `.glb` plus a bus-route JSON.
 
 | Map | Status | Traffic | Folder |
 |---|---|---|---|
 | 🇯🇵 Japan — Sakuragaoka, Tokyo-style | ✅ first pass | left | [`japan/`](japan/) |
 | 🇨🇳 China | planned | right | — |
-| 🇮🇳 India | planned | left | — |
+| 🇮🇳 India — Mallige Nagar, Bengaluru-style (curved roads, circle, metro) | ✅ first pass | left | [`india/`](india/) |
 | 🇺🇸 United States | planned | right | — |
 | 🇨🇦 Canada | planned | right | — |
 | 🇩🇪 Germany | planned | right | — |
