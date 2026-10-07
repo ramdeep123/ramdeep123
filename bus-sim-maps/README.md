@@ -12,6 +12,16 @@ Each country map is generated in Blender by a script, so it can be rebuilt, twea
 | 🇩🇪 **Europe (Germany)** — Lindenfeld | right | Ring road with a tram, cobbled Gassen, Fachwerk houses, Marktplatz, Gothic church, Kreisverkehr | [`europe/`](europe/) |
 | 🇺🇸 Alaska | right | planned | — |
 
+## Using the maps in Unity
+
+**[UNITY_GUIDE.md](UNITY_GUIDE.md)** covers:
+- direct download links for every map
+- the Unity packages to install and the import steps
+- ready-made C# scripts in [`unity/Scripts/`](unity/Scripts/) for colliders, the route, stops and bus spawn
+- a prompt you can paste into another chat to do the swap
+
+[`maps_manifest.json`](maps_manifest.json) lists every map's download URLs in machine-readable form.
+
 ## What every map contains
 
 - `out/<map>.glb`: the map in metres, Y-up, chunked into 200 m tiles. glTF `extras` carry `nbs_collision` (true/false) and `nbs_surface` on every mesh.
