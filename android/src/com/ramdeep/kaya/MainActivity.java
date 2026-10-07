@@ -1,3 +1,4 @@
+// KAYA — Copyright (c) 2026 Relies Production. All rights reserved.
 package com.ramdeep.kaya;
 
 import android.Manifest;
@@ -46,6 +47,7 @@ public class MainActivity extends Activity {
     private static final String START_URL = "https://" + HOST + "/index.html";
     private static final int REQ_CAMERA = 41;
     private static final int REQ_FILE = 42;
+    private static final int REQ_NOTIFY = 43;
 
     private WebView web;
     private PermissionRequest pendingPermission;
@@ -169,6 +171,7 @@ public class MainActivity extends Activity {
         MIME.put("woff2", "font/woff2");
         MIME.put("wasm", "application/wasm");
         MIME.put("task", "application/octet-stream");
+        MIME.put("mp3", "audio/mpeg");
     }
 
     private WebResourceResponse serveAsset(Uri uri) {
@@ -276,6 +279,11 @@ public class MainActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == REQ_NOTIFY) {
+            boolean ok = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            web.evaluateJavascript("window.KayaNotifyResult && window.KayaNotifyResult(" + ok + ")", null);
+            return;
+        }
         if (requestCode != REQ_CAMERA || pendingPermission == null) return;
         boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
         if (granted) {
@@ -351,6 +359,37 @@ public class MainActivity extends Activity {
         public void vibrate(int ms) {
             Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             if (v != null && v.hasVibrator()) v.vibrate(Math.max(5, Math.min(1000, ms)));
+        }
+
+        /** Next 7 days of reminders as JSON [{at, title, body}] — shown even when the app is closed. */
+        @JavascriptInterface
+        public void setReminders(String json) {
+            ReminderReceiver.save(MainActivity.this, json == null ? "[]" : json);
+        }
+
+        @JavascriptInterface
+        public void testReminder(String title, String body) {
+            ReminderReceiver.notify(MainActivity.this, title, body, 4242);
+        }
+
+        @JavascriptInterface
+        public boolean notificationsAllowed() {
+            if (Build.VERSION.SDK_INT >= 33) {
+                return checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+            }
+            return true;
+        }
+
+        @JavascriptInterface
+        public void requestNotifications() {
+            if (Build.VERSION.SDK_INT >= 33) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIFY);
+                    }
+                });
+            }
         }
 
         @JavascriptInterface

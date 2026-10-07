@@ -3,7 +3,8 @@
 import { state, update, today as dayState } from '../store.js';
 import { header, profileNow, energyToday, refresh, gate, isPro } from '../core.js';
 import { bmr, macros, mealPlan, waterLitres, regulate, proteinTopUp, GOALS } from '../engine/nutrition.js';
-import { DIETS } from '../engine/foods.js';
+import { DIETS, regionById } from '../engine/foods.js';
+import { regionSelect } from './onboarding.js';
 import { dayKey, keyToTs, weekday, esc, fmtNum } from '../engine/util.js';
 import { icon, ring, toast, openSheet, stepper, nudge } from '../ui.js';
 
@@ -91,7 +92,7 @@ export function html() {
     </section>
 
     <section class="card">
-      <div class="card-head"><span class="eyebrow">Today's meals · ${esc(DIETS.find((x) => x.id === (p.diet || 'veg'))?.label || '')}</span><span class="tag">${fmtNum(plan.totals.kcal)} kcal</span></div>
+      <div class="card-head"><span class="eyebrow">Today's meals · ${esc(regionById(p.region || 'in').short)} · ${esc(DIETS.find((x) => x.id === (p.diet || 'veg'))?.label || '')}</span><span class="tag">${fmtNum(plan.totals.kcal)} kcal</span></div>
       ${pro ? `<div class="list">${plan.meals.map((x) => `<div class="meal ${d.eaten?.[x.slot] ? 'eaten' : ''}">
           <div class="stack" style="gap:3px;min-width:0">
             <span class="eyebrow">${esc(x.label)}</span>
@@ -124,8 +125,10 @@ export function html() {
     </section>
 
     <section class="card">
-      <span class="eyebrow">Food preference</span>
+      <span class="eyebrow">Food region & preference</span>
+      <div class="field"><label for="fuelRegion">Meals from</label>${regionSelect('fuelRegion', p.region || 'in', 'region')}</div>
       <div class="chips">${DIETS.map((x) => `<button class="chip" data-act="diet" data-v="${x.id}" aria-pressed="${(p.diet || 'veg') === x.id}">${x.label}</button>`).join('')}</div>
+      <span class="faint small">Same BMR-regulated calories and protein everywhere — only the dishes change.</span>
     </section>`;
 }
 
@@ -167,6 +170,10 @@ export const actions = {
       }
     });
     toast('Weight logged');
+    refresh();
+  },
+  region(el) {
+    update((s) => { s.profile.region = el.value; });
     refresh();
   },
   diet(el) {

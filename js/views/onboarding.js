@@ -3,15 +3,16 @@
 import { esc, fmtNum, fmtDate } from '../engine/util.js';
 import { bmr, energy, macros, GOALS, ACTIVITY } from '../engine/nutrition.js';
 import { buildProgram } from '../engine/routine.js';
-import { DIETS } from '../engine/foods.js';
+import { DIETS, REGIONS, guessRegion } from '../engine/foods.js';
 import { PRICING, trialEnds, newSub } from '../engine/subscription.js';
 import { Orb } from '../engine/orb.js';
 import { icon, stepper, nudge, pressed, setViewActions } from '../ui.js';
 import { createProfile, seedSample } from '../store.js';
+import { CONFIG } from '../config.js';
 
 const draft = {
   name: '', sex: 'male', age: 25, height: 170, weight: 70, goal: 'lose', level: 'beginner',
-  days: 3, place: 'gym', minutes: 45, diet: 'veg', activity: 'desk', injuries: [],
+  days: 3, place: 'gym', minutes: 45, diet: 'veg', activity: 'desk', injuries: [], region: guessRegion(),
 };
 let step = 0;
 let root = null;
@@ -25,6 +26,11 @@ const chip = (field, value, label) =>
   `<button type="button" class="chip" data-act="pick" data-field="${field}" data-value="${value}" aria-pressed="${String(draft[field]) === String(value)}">${label}</button>`;
 const seg = (field, items) =>
   `<div class="seg">${items.map(([v, l]) => `<button type="button" data-act="pick" data-field="${field}" data-value="${v}" aria-pressed="${String(draft[field]) === String(v)}">${l}</button>`).join('')}</div>`;
+
+export function regionSelect(id, value, change) {
+  const groups = ['India', 'World'];
+  return `<select id="${id}" class="input" data-change="${change}">${groups.map((g) => `<optgroup label="${g === 'India' ? 'India' : 'Other countries'}">${REGIONS.filter((r) => r.group === g).map((r) => `<option value="${r.id}" ${r.id === value ? 'selected' : ''}>${esc(r.label)}${r.hint ? ` — ${esc(r.hint)}` : ''}</option>`).join('')}</optgroup>`).join('')}</select>`;
+}
 
 function bmrPanel() {
   const b = bmr(draft);
@@ -48,6 +54,7 @@ function render() {
       <div class="ob-foot">
         <button class="btn block" data-act="next">Start 7-day free trial ${icon('chev')}</button>
         <button class="btn ghost block" data-act="sample">Explore with a sample profile</button>
+        <p class="eyebrow" style="text-align:center">A ${esc(CONFIG.company)} app · © ${CONFIG.copyrightYear}</p>
         <p class="faint small" style="text-align:center">Free for 7 days. Then ${PRICING.symbol}${PRICING.intro.amount} for your first 3 months, ${PRICING.symbol}${PRICING.regular.amount} every 3 months after. Cancel anytime.</p>
       </div>
     </section>`;
@@ -94,6 +101,7 @@ function render() {
       <div class="field"><label>Outside the gym you are…</label><div class="tiles one">
         ${ACTIVITY.map((a) => opt('activity', a.id, a.label, a.hint)).join('')}
       </div></div>
+      <div class="field"><label for="obRegion">Your food region</label>${regionSelect('obRegion', draft.region, 'region')}</div>
       <div class="field"><label>Food preference</label><div class="chips">${DIETS.map((d) => chip('diet', d.id, d.label)).join('')}</div></div>
       <div class="field"><label>Anything that hurts? (optional)</label><div class="chips">
         ${[['knees', 'Knees'], ['back', 'Lower back'], ['shoulders', 'Shoulders']].map(([v, l]) => `<button type="button" class="chip" data-act="injury" data-value="${v}" aria-pressed="${draft.injuries.includes(v)}">${l}</button>`).join('')}
@@ -167,6 +175,7 @@ const actions = {
     draft.injuries = draft.injuries.includes(v) ? draft.injuries.filter((x) => x !== v) : [...draft.injuries, v];
     el.setAttribute('aria-pressed', String(draft.injuries.includes(v)));
   },
+  region(el) { draft.region = el.value; },
   name(el) {
     draft.name = el.value;
     root.querySelector('#obNext').disabled = !draft.name.trim();

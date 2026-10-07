@@ -30,7 +30,7 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.wasm': 'application/wasm', '.task': 'application/octet-stream',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.wasm': 'application/wasm', '.task': 'application/octet-stream', '.mp3': 'audio/mpeg',
 };
 const STATIC = new Set(['index.html', 'manifest.webmanifest', 'sw.js']);
 const STATIC_DIRS = ['css/', 'js/', 'assets/', 'vendor/'];

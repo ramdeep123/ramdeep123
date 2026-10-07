@@ -5,6 +5,7 @@ import { header, isPro, hooks, refresh, todayInfo } from '../core.js';
 import { SESSIONS, sessionById, CORTISOL } from '../engine/breath.js';
 import { Orb } from '../engine/orb.js';
 import { say, tone, buzz, hush } from '../engine/voice.js';
+import { L, BREATH_CUE } from '../engine/voicelines.js';
 import { lineChart } from '../charts.js';
 import { esc, fmtDuration, fmtDate, uid, dayKey, DAY } from '../engine/util.js';
 import { icon, openStage, setLayerHTML, toast } from '../ui.js';
@@ -80,7 +81,6 @@ export const actions = {
   play(el) { openBreath(el.dataset.id); },
 };
 
-const CUE = { in: 'Breathe in', in2: 'Top up', out: 'Breathe out', hold: 'Hold', hold2: 'Hold' };
 const SCALE = { in: 1.08, in2: 1.18, out: 0.62, hold: null, hold2: null };
 
 export function openBreath(id) {
@@ -146,7 +146,7 @@ export function openBreath(id) {
       document.getElementById('bPhase').textContent = `Starting in ${Math.ceil(-t)}`;
       return;
     }
-    if (t >= total) { S.phase = 'post'; cancelAnimationFrame(S.raf); keepAwake(false); if (S.voice) say('Gently return. Notice how you feel.'); draw(); return; }
+    if (t >= total) { S.phase = 'post'; cancelAnimationFrame(S.raf); keepAwake(false); if (S.voice) say(L.breathEnd); draw(); return; }
     let w = t % cycle;
     let i = 0;
     while (w >= s.pattern[i].sec) { w -= s.pattern[i].sec; i++; }
@@ -159,7 +159,7 @@ export function openBreath(id) {
       if (SCALE[ph.phase] != null) S.orb.scale = SCALE[ph.phase];
       S.orb.value = 40 + 50 * (1 - t / total);
       if (S.sound) tone(ph.phase, ph.sec);
-      if (S.voice && !s.script) say(CUE[ph.phase], { rate: 0.9 });
+      if (S.voice && !s.script) say(BREATH_CUE[ph.phase], { rate: 0.9 });
       buzz(15);
     }
     if (s.script) {
@@ -191,7 +191,7 @@ export function openBreath(id) {
         S.phase = 'run'; S.t = 0; S.last = 0; S.idx = -1;
         draw();
         keepAwake(true);
-        if (S.voice) say(s.script ? 'Get comfortable.' : 'Follow the orb.', { rate: 0.9 });
+        if (S.voice) say(s.script ? L.getComfortable : L.followOrb, { rate: 0.9 });
         S.raf = requestAnimationFrame(loop);
       },
       pause(el) { S.paused = !S.paused; el.textContent = S.paused ? 'Resume' : 'Pause'; if (S.paused) hush(); },

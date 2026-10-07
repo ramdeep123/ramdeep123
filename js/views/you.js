@@ -11,8 +11,10 @@ import { lineChart, barChart } from '../charts.js';
 import { esc, fmtDate, fmtNum, ema, keyToTs, startOfWeek, DAY, uid } from '../engine/util.js';
 import { setVoiceEnabled } from '../engine/voice.js';
 import { icon, openSheet, toast, stepper, nudge, pressed } from '../ui.js';
-import { shareText } from '../native.js';
-import { CONFIG } from '../config.js';
+import { shareText, canRemind, requestNotifications, setReminders, testReminder } from '../native.js';
+import { streak, xp, level, badges, DEFAULT_REMINDERS, reminderPlan } from '../engine/engage.js';
+import { voicePackSize } from '../engine/voice.js';
+import { CONFIG, COPYRIGHT } from '../config.js';
 
 const vol = (w) => w.exercises.reduce((a, e) => a + e.sets.reduce((b, s) => b + (s.kg || 0) * (s.reps || 0), 0), 0);
 
@@ -62,6 +64,8 @@ export function html() {
       <div class="row between"><b class="h3">${esc(passLine)}</b><span class="num accent" style="font-size:26px">${PRICING.symbol}${s.state === 'trial' || state.sub.payments.length === 0 ? PRICING.intro.amount : PRICING.regular.amount}<span class="faint" style="font-size:13px">/3 mo</span></span></div>
     </button>
 
+    ${levelCard()}
+
     <section class="card">
       <div class="card-head"><span class="eyebrow">Goals</span><button class="link small" data-act="addGoal">Add goal</button></div>
       ${state.goals.length ? state.goals.map((g) => {
@@ -88,15 +92,23 @@ export function html() {
       ${workouts.length ? `<div class="list">${workouts.slice(0, 8).map((w) => `<div class="li"><span class="grow"><b>${esc(w.dayName)}</b><span>${fmtDate(w.at)} · ${w.exercises.length} moves${w.durationSec ? ` · ${Math.round(w.durationSec / 60)} min` : ''}${vol(w) ? ` · ${fmtNum(vol(w))} kg` : ''}</span></span></div>`).join('')}</div>` : '<div class="empty">Your sessions will appear here.</div>'}
     </section>
 
+    ${remindersCard()}
+
     <section class="card">
       <span class="eyebrow">Settings</span>
       <div class="row between"><span>Voice coaching</span><button class="chip" data-act="toggle" data-k="voice" aria-pressed="${state.settings.voice !== false}">${state.settings.voice !== false ? 'On' : 'Off'}</button></div>
+      <div class="row between"><span>Coach voice</span><span class="faint small">${voicePackSize() ? `KAYA voice pack · ${voicePackSize()} clips` : 'Phone voice'}</span></div>
       <div class="row between"><span>Timer sounds</span><button class="chip" data-act="toggle" data-k="sound" aria-pressed="${state.settings.sound !== false}">${state.settings.sound !== false ? 'On' : 'Off'}</button></div>
       <div class="divider"></div>
       <div class="grid2"><button class="btn small ghost" data-act="backup">${icon('share')} Back up</button><button class="btn small ghost" data-act="restore">Restore</button></div>
       <button class="btn small danger" data-act="wipe">Reset all data</button>
     </section>
-    <p class="faint small" style="text-align:center">KAYA ${CONFIG.version} · Your data stays on this phone. KAYA gives general fitness guidance, not medical advice — check with a doctor before starting if you have a health condition.</p>`;
+    <section class="stack" style="align-items:center;text-align:center;gap:6px">
+      <span class="eyebrow">A ${esc(CONFIG.company)} app</span>
+      <span class="faint small">KAYA ${CONFIG.version} · ${esc(COPYRIGHT)}</span>
+      <span class="faint small">Your data stays on this phone. KAYA gives general fitness guidance, not medical advice — check with a doctor before starting if you have a health condition.</span>
+      <button class="link small" data-act="about">About & licences</button>
+    </section>`;
 }
 
 export function mount(el) {
@@ -131,6 +143,46 @@ export function mount(el) {
     }).filter(Boolean).sort((a, b) => a.x - b.x);
     lineChart(f, { series: [{ name: 'Form score', color: 'var(--magma)', dots: true, area: true, points: pts }], fmtX: fmt, fmtY: (y) => `${Math.round(y)}`, yPad: 3, height: 150 });
   }
+}
+
+function levelCard() {
+  const lv = level(xp(state));
+  const st = streak(state);
+  const bs = badges(state);
+  const earned = bs.filter((b) => b.earned).length;
+  return `<section class="card">
+    <div class="card-head"><span class="eyebrow">Level ${lv.n} · ${esc(lv.name)}</span><span class="faint small mono">${lv.xp} XP</span></div>
+    <div class="meter"><i style="width:${Math.round(lv.pct * 100)}%"></i></div>
+    <span class="muted small">${lv.next ? `${lv.next - lv.xp} XP to the next level.` : 'Top level reached.'} Streak ${st.current} days · best ${st.best}.</span>
+    <div class="card-head"><span class="eyebrow">Badges · ${earned}/${bs.length}</span></div>
+    <div class="badges">${bs.map((b) => `<div class="badge ${b.earned ? 'earned' : ''}"><span class="medal">${icon(b.earned ? 'check' : 'lock')}</span><b>${esc(b.title)}</b><span>${esc(b.text)}</span></div>`).join('')}</div>
+    <span class="faint small">XP: workout 50 · coached set 15 · breath session 20 · check-in 10 · meal 5 · water 1 · closed day +30.</span>
+  </section>`;
+}
+
+function remindersCard() {
+  const r = { ...DEFAULT_REMINDERS, ...(state.reminders || {}) };
+  if (!canRemind()) {
+    return `<section class="card"><span class="eyebrow">Daily reminders</span><p class="muted small">Reminders work in the KAYA Android app, even when it\u2019s closed.</p></section>`;
+  }
+  const row = (k, label) => `<div class="time-row"><label for="rt-${k}">${label}</label><input id="rt-${k}" class="input" type="time" value="${r[k]}" data-change="remTime" data-k="${k}" ${r.enabled ? '' : 'disabled'}></div>`;
+  return `<section class="card">
+    <div class="card-head"><span class="eyebrow">Daily reminders</span><button class="chip" data-act="remToggle" aria-pressed="${r.enabled}">${r.enabled ? 'On' : 'Off'}</button></div>
+    ${row('morning', 'Morning check-in')}
+    ${row('training', 'Training or recovery')}
+    ${row('evening', 'Close your day')}
+    <span class="faint small">At most three a day, and KAYA skips any you\u2019ve already done. Messages change with your streak and plan.</span>
+    ${r.enabled ? '<button class="btn small ghost" data-act="remTest">Send a test reminder</button>' : ''}
+  </section>`;
+}
+
+/** Turn reminders on (asks for notification permission on Android 13+). */
+export async function enableReminders() {
+  const ok = await requestNotifications();
+  update((s) => { s.reminders = { ...DEFAULT_REMINDERS, ...(s.reminders || {}), enabled: true, dismissed: true }; });
+  setReminders(reminderPlan(state));
+  toast(ok ? 'Daily reminders on' : 'Reminders are on — allow notifications for KAYA in Android settings to see them');
+  refresh();
 }
 
 function editSheet() {
@@ -206,6 +258,23 @@ function goalSheet() {
 }
 
 export const actions = {
+  remToggle() {
+    if (!state.reminders?.enabled) { enableReminders(); return; }
+    update((s) => { s.reminders = { ...s.reminders, enabled: false }; });
+    setReminders([]);
+    toast('Reminders off');
+    refresh();
+  },
+  remTime(el) {
+    update((s) => { s.reminders = { ...DEFAULT_REMINDERS, ...(s.reminders || {}), [el.dataset.k]: el.value }; });
+    setReminders(reminderPlan(state));
+    toast('Reminder time saved');
+  },
+  remTest() {
+    const next = reminderPlan(state)[0];
+    testReminder(next?.title || 'KAYA', next?.body || 'Your coach is ready.');
+    toast('Test reminder sent');
+  },
   edit: editSheet,
   addGoal: goalSheet,
   rmGoal(el) { update((s) => { s.goals = s.goals.filter((g) => g.id !== el.dataset.id); }); refresh(); },
@@ -238,6 +307,19 @@ export const actions = {
           } catch (e) { toast('That doesn’t look like a KAYA backup'); }
         },
       },
+    });
+  },
+  about() {
+    openSheet({
+      temp: 'you',
+      html: `<span class="eyebrow">About</span><h2 class="h2">KAYA ${CONFIG.version}</h2>
+        <p class="muted">Designed and produced by <b>${esc(CONFIG.company)}</b>. ${esc(COPYRIGHT)} The KAYA name, logo, animated coach, exercise library, plans, written content and voice are proprietary and may not be copied or redistributed without written permission.</p>
+        <div class="stack" style="gap:6px">
+          <span class="eyebrow">Open-source components</span>
+          <span class="muted small">MediaPipe Tasks Vision and Pose Landmarker models (Google) — Apache License 2.0.</span>
+          <span class="muted small">Big Shoulders Display, Onest and Martian Mono fonts — SIL Open Font License 1.1.</span>
+        </div>
+        <button class="btn block" data-act="close">Close</button>`,
     });
   },
   wipe() {

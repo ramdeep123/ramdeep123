@@ -1,5 +1,7 @@
 # KAYA — the gym trainer that lives in your phone
 
+**A Relies Production app.** © 2026 Relies Production. All rights reserved — see [LICENSE](LICENSE).
+
 KAYA replaces the personal trainer with three things that work together:
 
 - **An animated coach** that demonstrates every move, with tempo, bar path and live joint angles.
@@ -23,7 +25,7 @@ KAYA replaces the personal trainer with three things that work together:
 
 ## Install the Android app
 
-1. Download **[`release/KAYA-1.0.0.apk`](release/KAYA-1.0.0.apk)** on your phone.
+1. Download **[`release/KAYA-1.1.0.apk`](release/KAYA-1.1.0.apk)** on your phone.
 2. Open it and allow *Install unknown apps* for your browser or file manager when Android asks.
 3. Open KAYA → **Start 7-day free trial** (or **Explore with a sample profile** to see it filled with example data).
 
@@ -33,13 +35,15 @@ Requires Android 7.0+ with an up-to-date *Android System WebView* (Play Store). 
 
 | Area | What it does |
 |---|---|
-| **Today** | A "thermal core" orb shows your readiness from a 20-second morning check-in (sleep, energy, soreness, stress). Low readiness automatically drops a set per exercise; a weekly muscle **heat map** shows what you've trained. |
+| **Today** | A daily **streak** (one missed day a week is bridged by a streak freeze), **three daily quests** (check in, train or breathe, log meals), XP **levels** from Spark to Supernova, and a "thermal core" orb showing readiness from a 20-second check-in. Low readiness automatically drops a set. The **training load map** shows weekly sets per muscle against your target plus recovery since you last trained it — it shows effort, not body temperature. |
 | **Train** | A weekly program built from your goal, level, days (2–6), place (gym / home + dumbbells / no equipment), session length and injuries (knees, lower back, shoulders get safer swaps). Guided player with set logging, rest timer, and automatic **progressive overload**: hit the top of the rep range with form score 75+ and the weight goes up next time. |
 | **Animated coach** | 23 exercises animated by a kinematic "holo-mannequin" (forward kinematics + 2-bone IK, so limbs never stretch). Working muscles glow, the bar path is traced and the key joint angle is measured live. 0.5× slow-motion. |
-| **AI form coach** | MediaPipe Pose Landmarker runs on the phone. A hysteresis state machine counts only full reps; rules catch real faults (shallow squats, hips sagging in push-ups, elbows drifting in curls, hips rising first in deadlifts, uneven presses, swinging…). A fault must persist ~0.5 s or repeat in 2 of the last 3 reps before the coach speaks. A ghost figure mirrors your depth. Works with the live camera or a recorded video. Video never leaves the device. |
-| **Fuel** | BMR (Mifflin-St Jeor, or Katch-McArdle with body-fat %) + daily movement + training cost = maintenance. Goal adjustment on top, but **never below your BMR**. Training-day/rest-day calories, macros, water, and an Indian meal plan (veg, eggetarian, non-veg, vegan) with swaps. The **metabolic regulator** reads your real weight trend each week and nudges calories by up to 150 kcal/day. |
+| **AI form coach** | MediaPipe Pose Landmarker (Precise "full" model, automatic fallback to Fast on slower phones) runs on the phone. Joint angles come from **3D world landmarks**, so they stay correct when you're not perfectly side-on; a One Euro filter removes jitter without lag; the tracked side is locked so it doesn't flicker. Before counting, KAYA checks framing (too far, cut off, wrong angle) and light, then runs a 3-2-1 countdown that **calibrates your start position**. Each rep gets depth %, down/up tempo and a form score; the live overlay shows the key joint angle against its target. Faults are spoken only when real (persist ~0.5 s or repeat in 2 of 3 reps). Auto-pauses when you leave the frame. Works with the live camera or a recorded video. Video never leaves the device. |
+| **Fuel** | BMR (Mifflin-St Jeor, or Katch-McArdle with body-fat %) + daily movement + training cost = maintenance. Goal adjustment on top, but **never below your BMR**. Training-day/rest-day calories, macros, water, and meal plans (veg, eggetarian, non-veg, vegan) with swaps from **14 food regions**: India (all, North, South, East, West), France, Italy, UK, USA, Middle East, Japan, China, Mexico and Brazil — 194 dishes, same calorie and protein targets everywhere. The **metabolic regulator** reads your real weight trend each week and nudges calories by up to 150 kcal/day. |
 | **Mind** | Physiological sigh, box breathing, resonance breathing, 4-7-8, post-workout down-shift and a 10-minute NSDR body scan, with an animated breathing orb, voice guide and tones. Stress before/after is tracked. A "Cortisol & your body" section explains the HPA rhythm, what chronic cortisol does to fat, muscle and sleep, and what the research actually shows (with citations). |
 | **You** | Goals (weight, lifts, workouts/week, calm minutes), bodyweight trend, weekly training volume, form-score trend, history, voice/sound settings, backup/restore. |
+| **Reminders** | Up to three Android notifications a day (morning check-in, training or recovery, close your day) at times you choose. They work when the app is closed, survive a restart, skip anything you've already done, and change wording with your streak and plan. |
+| **Voice** | Every spoken line has an id. Drop recorded clips (e.g. from ElevenLabs) into `assets/voice/` and the coach uses your voice; anything not recorded falls back to the phone's voice. See [docs/voice](docs/voice/README.md). |
 | **KAYA Pass** | 7-day trial, ₹29 intro quarter, ₹49 per quarter after. Subscribing during the trial never costs free days. |
 
 ## Project layout
@@ -65,7 +69,7 @@ tests/                         node:test suites (engines, form coach, billing, s
 ## Develop
 
 ```bash
-npm test                 # 17 tests: BMR, regulator, billing, programs, IK, rep counting…
+npm test                 # 28 tests: BMR, regulator, billing, programs, IK, rep counting, 3D angles, regions, streaks…
 npm start                # http://localhost:8080 — the web version (camera needs https or localhost)
 npm run build:apk        # builds release/KAYA-<version>.apk
 ```
@@ -85,9 +89,18 @@ Payments run in **demo mode** until you connect Razorpay — the pass activates 
 
 UPI app links (GPay, PhonePe, Paytm) opened by Razorpay Checkout are handed to the installed apps by the Android shell.
 
+## Recording the coach's voice
+
+`docs/voice/KAYA-voice-script.md` lists all 109 lines with their file names (`count-01.mp3`, `fix-squat-partial.mp3`, …). Record them in ElevenLabs one by one, or generate them all at once with `tools/elevenlabs-generate.mjs`, put the files in `assets/voice/`, run `node tools/voice-manifest.mjs`, and rebuild. Details in [docs/voice/README.md](docs/voice/README.md).
+
+## Copyright
+
+KAYA, its design, animated coach, exercise library, content and voice are © 2026 Relies Production, all rights reserved ([LICENSE](LICENSE)). Bundled open-source components keep their own licences ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
 ## Honest limits
 
-- Form checks use 2D landmarks from one camera, so they catch what a camera can see reliably (depth, joint angles, hip line, symmetry, tempo). They can't judge spine rounding or grip, and they're a coach, not a physiotherapist.
+- Form checks use one phone camera. 3D landmarks are estimated by the AI, not measured, so they catch what a camera can see reliably (depth, joint angles, hip line, symmetry, tempo). They can't judge spine rounding or grip, and they're a coach, not a physiotherapist.
+- The load map shows training effort per muscle. A phone camera can't measure body heat or temperature.
 - Food values are approximate for home-style cooking.
 - Data lives on the phone (use **You → Back up**). Cloud sync and accounts need a backend; `server/` is the place to add them.
 - KAYA gives general fitness guidance, not medical advice.

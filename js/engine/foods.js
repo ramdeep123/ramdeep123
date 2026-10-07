@@ -1,8 +1,12 @@
-// Indian-first dish database. Values are approximate per listed serving
+// Dish database by food region. Values are approximate per listed serving
 // (home-style cooking); the plan scales servings to hit each meal's target.
 // diet: vegan ⊂ veg ⊂ egg ⊂ nonveg. slots: b breakfast, l lunch, d dinner, s snack.
+// region: 'in' (pan-India), Indian regions 'in-north' | 'in-south' | 'in-east' | 'in-west',
+// countries, and 'global' basics used as a fallback for every country.
 
-export const DISHES = [
+import { WORLD_DISHES } from './foods-world.js';
+
+const INDIA = [
   // breakfast
   { id: 'poha', name: 'Vegetable poha with peanuts', serving: '1 plate (200 g)', slots: 'b', diet: 'vegan', kcal: 300, p: 7, c: 50, f: 8 },
   { id: 'upma', name: 'Rava upma with vegetables', serving: '1 bowl (200 g)', slots: 'b', diet: 'vegan', kcal: 290, p: 8, c: 45, f: 9 },
@@ -48,6 +52,41 @@ export const DISHES = [
   { id: 'banana-almonds', name: 'Banana with almonds', serving: '1 banana + 15 almonds', slots: 's', diet: 'vegan', kcal: 200, p: 5, c: 29, f: 9 },
   { id: 'chaas-chana', name: 'Buttermilk with roasted chana', serving: '250 ml + 30 g', slots: 's', diet: 'veg', kcal: 210, p: 12, c: 30, f: 4 },
 ];
+
+export const DISHES = [...INDIA.map((d) => ({ ...d, region: 'in' })), ...WORLD_DISHES];
+
+export const REGIONS = [
+  { id: 'in', label: 'India · all regions', group: 'India', short: 'Indian' },
+  { id: 'in-north', label: 'North India', group: 'India', short: 'North Indian', hint: 'Punjab, Delhi, UP, Haryana, Himachal' },
+  { id: 'in-south', label: 'South India', group: 'India', short: 'South Indian', hint: 'Tamil Nadu, Kerala, Karnataka, Andhra, Telangana' },
+  { id: 'in-east', label: 'East India', group: 'India', short: 'East Indian', hint: 'Bengal, Odisha, Bihar, Assam' },
+  { id: 'in-west', label: 'West India', group: 'India', short: 'West Indian', hint: 'Gujarat, Maharashtra, Goa, Rajasthan' },
+  { id: 'fr', label: 'France', group: 'World', short: 'French' },
+  { id: 'it', label: 'Italy', group: 'World', short: 'Italian' },
+  { id: 'gb', label: 'United Kingdom', group: 'World', short: 'British' },
+  { id: 'us', label: 'United States', group: 'World', short: 'American' },
+  { id: 'me', label: 'Middle East', group: 'World', short: 'Middle Eastern' },
+  { id: 'jp', label: 'Japan', group: 'World', short: 'Japanese' },
+  { id: 'cn', label: 'China', group: 'World', short: 'Chinese' },
+  { id: 'mx', label: 'Mexico', group: 'World', short: 'Mexican' },
+  { id: 'br', label: 'Brazil', group: 'World', short: 'Brazilian' },
+];
+export const regionById = (id) => REGIONS.find((r) => r.id === id) || REGIONS[0];
+
+/** Dishes available for a region. Specific-region dishes come first and get a bonus in planning. */
+export function dishesFor(region = 'in') {
+  if (region === 'in') return DISHES.filter((d) => d.region === 'in' || d.region.startsWith('in-'));
+  if (region.startsWith('in-')) return DISHES.filter((d) => d.region === region || d.region === 'in');
+  return DISHES.filter((d) => d.region === region || d.region === 'global');
+}
+
+/** Guess the user's food region from the device language. */
+export function guessRegion(lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-IN') {
+  const l = lang.toLowerCase();
+  const map = [['fr', 'fr'], ['it', 'it'], ['en-gb', 'gb'], ['en-us', 'us'], ['ja', 'jp'], ['zh', 'cn'], ['es-mx', 'mx'], ['pt-br', 'br'], ['ar', 'me'], ['he', 'me'], ['fa', 'me'], ['ta', 'in-south'], ['te', 'in-south'], ['kn', 'in-south'], ['ml', 'in-south'], ['bn', 'in-east'], ['or', 'in-east'], ['gu', 'in-west'], ['mr', 'in-west'], ['pa', 'in-north']];
+  for (const [k, v] of map) if (l === k || l.startsWith(k + '-') || l.startsWith(k)) return v;
+  return 'in';
+}
 
 const RANK = { vegan: 0, veg: 1, egg: 2, nonveg: 3 };
 export const dietAllows = (pref, dishDiet) => RANK[dishDiet] <= RANK[pref];

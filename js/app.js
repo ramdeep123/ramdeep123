@@ -3,7 +3,7 @@
 import { state } from './store.js';
 import { hooks } from './core.js';
 import { icon, setViewActions, globalActions, closeLayer, layerCount } from './ui.js';
-import { setVoiceEnabled } from './engine/voice.js';
+import { setVoiceEnabled, loadVoicePack } from './engine/voice.js';
 import { showOnboarding, onboardingBack } from './views/onboarding.js';
 import * as today from './views/today.js';
 import * as train from './views/train.js';
@@ -12,6 +12,13 @@ import * as fuel from './views/fuel.js';
 import * as mind from './views/mind.js';
 import * as you from './views/you.js';
 import { openPass } from './views/pass.js';
+import { state as st, update } from './store.js';
+import { xp, level, dayClosed, reminderPlan } from './engine/engage.js';
+import { setReminders } from './native.js';
+import { toast } from './ui.js';
+import { say } from './engine/voice.js';
+import { L } from './engine/voicelines.js';
+import { dayKey } from './engine/util.js';
 
 const VIEWS = { today, train, coach, fuel, mind, you };
 const TABS = [
@@ -43,6 +50,27 @@ function render() {
   app.innerHTML = `<main class="view" data-temp="${current}" id="view">${v.html()}</main>${renderDock()}`;
   setViewActions(v.actions || {});
   v.mount?.(app.querySelector('#view'));
+  afterRender();
+}
+
+/** Celebrate milestones once, and keep the phone's reminder schedule current. */
+function afterRender() {
+  const e = (st.engage ||= { level: 0, closed: {} });
+  const lv = level(xp(st));
+  const today = dayKey();
+  let msg = null, line = null;
+  if (e.level && lv.n > e.level) { msg = `Level up: ${lv.name}`; line = L.levelUp; }
+  if (dayClosed(st) && !e.closed[today]) { msg = msg || 'Day closed — all three done. See you tomorrow.'; line = line || L.dayClosed; }
+  if (lv.n !== e.level || (dayClosed(st) && !e.closed[today])) {
+    update((s) => {
+      s.engage = { level: lv.n, closed: { ...(s.engage?.closed || {}), ...(dayClosed(s) ? { [today]: true } : {}) } };
+    });
+  }
+  if (msg && e.level) {
+    setTimeout(() => toast(msg), 400);
+    if (st.settings.voice !== false) say(line);
+  }
+  setReminders(reminderPlan(st));
 }
 
 function go(tab) {
@@ -75,6 +103,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 setVoiceEnabled(state.settings.voice !== false);
+loadVoicePack();
 
 const fromHash = location.hash.replace('#', '');
 if (VIEWS[fromHash]) current = fromHash;

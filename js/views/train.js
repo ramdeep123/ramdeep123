@@ -7,6 +7,7 @@ import { EXERCISES, BY_ID, MUSCLE_LABEL } from '../engine/exercises.js';
 import { GOALS } from '../engine/nutrition.js';
 import { WEEKDAYS, weekday, startOfWeek, dayKey, DAY, esc, fmtNum, fmtDuration, uid } from '../engine/util.js';
 import { say, beep, buzz } from '../engine/voice.js';
+import { L } from '../engine/voicelines.js';
 import { icon, openSheet, openStage, setLayerHTML, ring, toast, pressed } from '../ui.js';
 import { paintThumbs, thumb, openExercise, figureStage, mountFigure } from './exercise.js';
 import { keepAwake } from '../native.js';
@@ -241,7 +242,7 @@ export function startWorkout(wd) {
       startRest(Math.max(60, m.rest), `Next exercise: ${BY_ID[nm.id].name}`);
     } else {
       S.phase = 'summary';
-      say('Workout complete. Great job.');
+      say(L.workoutDone);
       draw();
     }
   }
@@ -263,7 +264,7 @@ export function startWorkout(wd) {
       if (left === 0) {
         if (state.settings.sound !== false) beep(990, 0.25);
         buzz([60, 40, 60]);
-        say('Go');
+        say(L.restOver);
         S.phase = 'work';
         draw();
       }

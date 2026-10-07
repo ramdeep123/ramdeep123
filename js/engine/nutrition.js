@@ -3,7 +3,7 @@
 // Rule that never bends: the daily target never goes below BMR.
 
 import { clamp, round, seeded, slope, keyToTs, DAY } from './util.js';
-import { DISHES, dietAllows } from './foods.js';
+import { dishesFor, dietAllows } from './foods.js';
 
 export const ACTIVITY = [
   { id: 'desk', short: 'Sitting', label: 'Mostly sitting', hint: 'Desk job, study, driving', f: 1.2 },
@@ -100,12 +100,16 @@ export const MEAL_SLOTS = SLOTS;
  */
 export function mealPlan(p, dateKey, kcal, swaps = {}, trainingDay = false) {
   const used = new Set();
+  const region = p.region || 'in';
+  const regionPool = dishesFor(region);
   const meals = SLOTS.map((slot) => {
     const target = kcal * slot.share;
-    const pool = DISHES.filter((d) => d.slots.includes(slot.id) && dietAllows(p.diet || 'veg', d.diet) && !used.has(d.id));
+    const pool = regionPool.filter((d) => d.slots.includes(slot.id) && dietAllows(p.diet || 'veg', d.diet) && !used.has(d.id));
     const rnd = seeded(`${dateKey}:${slot.id}:${swaps[slot.key] || 0}`);
-    const scored = pool.map((d) => ({ d, w: ((d.p * 4) / d.kcal) * 0.65 + rnd() * 0.45 })).sort((a, b) => b.w - a.w);
-    const dish = scored[0]?.d || DISHES[0];
+    // prefer protein-dense dishes and the region's own dishes over the fallback pool
+    const local = (d) => (d.region === region ? 0.4 : 0);
+    const scored = pool.map((d) => ({ d, w: ((d.p * 4) / d.kcal) * 0.65 + rnd() * 0.45 + local(d) })).sort((a, b) => b.w - a.w);
+    const dish = scored[0]?.d || regionPool[0];
     used.add(dish.id);
     const mult = clamp(Math.round((target / dish.kcal) * 4) / 4, 0.5, 2.5);
     return {

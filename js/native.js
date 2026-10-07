@@ -37,3 +37,30 @@ export function openExternal(url) {
 export function appVersion() {
   try { return N()?.version?.() || null; } catch (e) { return null; }
 }
+
+/** Hand the next 7 days of reminders to the Android app (no-op in a browser). */
+let lastPlan = '';
+export function setReminders(plan) {
+  const json = JSON.stringify(plan.map(({ at, title, body }) => ({ at, title, body })));
+  if (json === lastPlan) return;
+  lastPlan = json;
+  try { N()?.setReminders?.(json); } catch (e) { /* ignore */ }
+}
+
+export const canRemind = () => !!N()?.setReminders;
+
+export function testReminder(title, body) {
+  try { N()?.testReminder?.(title, body); } catch (e) { /* ignore */ }
+}
+
+/** Ask for notification permission (Android 13+). Resolves true/false. */
+export function requestNotifications() {
+  return new Promise((resolve) => {
+    const n = N();
+    if (!n?.requestNotifications) { resolve(false); return; }
+    try { if (n.notificationsAllowed()) { resolve(true); return; } } catch (e) { /* ignore */ }
+    window.KayaNotifyResult = (ok) => { window.KayaNotifyResult = null; resolve(!!ok); };
+    n.requestNotifications();
+    setTimeout(() => { if (window.KayaNotifyResult) { window.KayaNotifyResult = null; resolve(false); } }, 20000);
+  });
+}

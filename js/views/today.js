@@ -12,32 +12,17 @@ import { esc, fmtNum, DAY, dayKey } from '../engine/util.js';
 import { icon, ring, openSheet, toast } from '../ui.js';
 import { paintThumbs, thumb } from './exercise.js';
 import { planFor } from './fuel.js';
+import { streak, quests, xp, level } from '../engine/engage.js';
+import { canRemind } from '../native.js';
+import { muscleLoad, loadAdvice } from '../engine/load.js';
+import { WEEKDAYS, startOfWeek } from '../engine/util.js';
+import { dayLog } from '../engine/engage.js';
 
 let orb = null;
 
 function greeting() {
   const h = new Date().getHours();
   return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
-}
-
-export function weeklyHeat(now = Date.now()) {
-  const load = {};
-  for (const w of state.workouts) {
-    if ((w.at || 0) < now - 7 * DAY) continue;
-    for (const e of w.exercises) {
-      const ex = BY_ID[e.id];
-      if (!ex) continue;
-      const sets = e.sets.length;
-      ex.muscles.primary.forEach((m) => { load[m] = (load[m] || 0) + sets; });
-      ex.muscles.secondary.forEach((m) => { load[m] = (load[m] || 0) + sets * 0.5; });
-    }
-  }
-  const h = (...ms) => Math.min(1, Math.max(0, ...ms.map((m) => (load[m] || 0) / 12)));
-  return {
-    load,
-    front: { torso: h('chest', 'abs', 'core'), delts: h('delts'), upperArm: h('biceps'), foreArm: h('forearms'), thigh: h('quads', 'adductors'), shin: h('calves') * 0.6, glutes: 0 },
-    back: { torso: h('back', 'lats', 'traps'), delts: h('delts'), upperArm: h('triceps'), foreArm: h('forearms'), thigh: h('hamstrings'), shin: h('calves'), glutes: h('glutes') },
-  };
 }
 
 function paintHeat(canvas, heat, back) {
@@ -101,6 +86,7 @@ export function html() {
   const goal = state.goals.find((g) => g.type === 'weight');
   const w = e.profile.weight;
   const c = t.checkin;
+  const rows = muscleLoad(state);
 
   let session;
   if (t.done) {
@@ -148,6 +134,8 @@ export function html() {
 
   return `${header(trialEyebrow(), `${greeting()},<br>${esc(p.name)}`)}
     ${state.sample ? `<div class="banner">${icon('info')}<span class="grow">You're exploring a <b>sample profile</b> with example data.</span><button class="link" data-act="leaveSample">Use mine</button></div>` : ''}
+    ${engageCard()}
+    ${canRemind() && !state.reminders?.enabled && !state.reminders?.dismissed ? `<div class="banner">${icon('bolt')}<span class="grow"><b>Turn on daily reminders</b> so your streak never slips.</span><button class="link" data-act="remindOn">Turn on</button><button class="link faint" data-act="remindLater" aria-label="Not now">${icon('close')}</button></div>` : ''}
     <section class="core-wrap" aria-label="Readiness">
       <canvas id="core" aria-hidden="true"></canvas>
       <div class="core-read">
@@ -178,14 +166,57 @@ export function html() {
       </section>
     </div>
     <section class="card">
-      <div class="card-head"><span class="eyebrow">This week's heat</span><span class="faint small mono">7 days</span></div>
+      <div class="card-head"><span class="eyebrow">Training load map</span><span class="faint small mono">last 7 days</span></div>
       <div class="heat">
         <figure><canvas id="heatF" aria-label="Front muscles trained this week"></canvas><span class="eyebrow">Front</span></figure>
         <figure><canvas id="heatB" aria-label="Back muscles trained this week"></canvas><span class="eyebrow">Back</span></figure>
       </div>
-      <div class="stack" style="gap:4px"><div class="heat-scale"></div><div class="row between faint small"><span>Untrained</span><span>12+ sets</span></div></div>
+      <div class="stack" style="gap:4px"><div class="heat-scale"></div><div class="row between faint small"><span>Untrained</span><span>At weekly target</span></div></div>
+      <p class="muted small">${esc(loadAdvice(rows))}</p>
+      <div class="loads">${rows.map((r) => `<div class="load-row">
+        <span class="lname">${esc(r.label)}</span>
+        <span class="lbar"><i style="width:${Math.min(100, Math.round((r.sets / r.target) * 100))}%" class="${r.status}"></i><b style="left:${Math.min(100, (r.target / (r.target * 1.6)) * 100)}%"></b></span>
+        <span class="lnum tabnum">${r.sets}/${r.target}</span>
+        <span class="lrec ${r.recovery < 50 ? 'sore' : r.recovery < 100 ? 'mid' : ''}" title="Recovery">${r.recovery}%</span>
+      </div>`).join('')}</div>
+      <span class="faint small">Sets per muscle this week vs your target, and recovery since you last trained it. The colours show training effort — the phone can’t measure body temperature.</span>
     </section>
     ${goalCard}`;
+}
+
+function engageCard() {
+  const s = streak(state);
+  const lv = level(xp(state));
+  const qs = quests(state);
+  const doneN = qs.filter((q) => q.done).length;
+  const log = dayLog(state);
+  const ws = startOfWeek();
+  const week = WEEKDAYS.map((d, i) => {
+    const k = dayKey(ws + i * DAY);
+    const l = log[k];
+    const on = !!l && (l.workout || l.coachSets > 0 || l.mind > 0 || l.checkin || l.meals > 0);
+    return `<span class="sd ${on ? 'on' : ''} ${k === dayKey() ? 'today' : ''} ${s.frozen.includes(k) ? 'frozen' : ''}" title="${d}">${d[0]}</span>`;
+  }).join('');
+  return `<section class="card engage">
+    <div class="row between">
+      <div class="streak">
+        <span class="flame ${s.todayDone ? 'lit' : ''}">${icon('fuel')}</span>
+        <span class="stack" style="gap:0"><span class="num" style="font-size:34px;line-height:.9">${s.current}</span><span class="eyebrow">day streak</span></span>
+      </div>
+      <button class="lvl" data-act="go" data-tab="you" aria-label="Level ${lv.n} ${lv.name}">
+        <span class="eyebrow">Lv ${lv.n} · ${esc(lv.name)}</span>
+        <span class="meter" style="width:120px"><i style="width:${Math.round(lv.pct * 100)}%"></i></span>
+        <span class="faint small mono">${lv.xp}${lv.next ? ` / ${lv.next} XP` : ' XP'}</span>
+      </button>
+    </div>
+    <div class="streak-week">${week}</div>
+    <div class="card-head"><span class="eyebrow">Today's heat · ${doneN}/3</span>${doneN === 3 ? '<span class="tag good">Day closed</span>' : `<span class="faint small">${s.freezeReady ? 'Streak freeze ready' : 'Freeze used this week'}</span>`}</div>
+    <div class="quests">${qs.map((q) => `<button class="quest ${q.done ? 'done' : ''}" data-act="${q.done ? 'noop' : q.act}">
+      <span class="qcheck">${q.done ? icon('check') : ''}</span>
+      <span class="grow"><b>${esc(q.title)}</b><span>${esc(q.sub)}</span></span>
+      ${q.done ? '' : icon('chev', 'chev')}
+    </button>`).join('')}</div>
+  </section>`;
 }
 
 function eatenKcal(key) {
@@ -198,13 +229,23 @@ export async function mount(el) {
   const t = todayInfo();
   orb = new Orb(el.querySelector('#core'), { value: t.readiness ?? 50 }).start();
   paintThumbs(el);
-  const heat = weeklyHeat();
-  paintHeat(el.querySelector('#heatF'), heat.front, false);
-  paintHeat(el.querySelector('#heatB'), heat.back, true);
+  const H = Object.fromEntries(muscleLoad(state).map((r) => [r.id, r.heat]));
+  paintHeat(el.querySelector('#heatF'), { torso: Math.max(H.chest, H.core), delts: H.delts, upperArm: H.biceps, foreArm: H.biceps * 0.5, thigh: H.quads, shin: H.calves * 0.6, glutes: 0 }, false);
+  paintHeat(el.querySelector('#heatB'), { torso: H.back, delts: H.delts, upperArm: H.triceps, foreArm: H.back * 0.3, thigh: H.hamstrings, shin: H.calves, glutes: H.glutes }, true);
 }
 
 export const actions = {
   checkin: checkinSheet,
+  noop() {},
+  goFuel() { go('fuel'); },
+  async remindOn() {
+    const { enableReminders } = await import('./you.js');
+    enableReminders();
+  },
+  remindLater() {
+    update((s) => { s.reminders = { ...(s.reminders || {}), dismissed: true }; });
+    refresh();
+  },
   quickBreath() {
     import('./mind.js').then((m) => m.openBreath('sigh'));
   },
