@@ -189,7 +189,8 @@ class City:
     # ------------------------------------------------------------ surfaces
     def build_surfaces(self, asphalt="asphalt", footpath="sidewalk", kerb_road="curb", kerb_back="curb", median_top="concrete",
                        median_kerb="curb", median_h=0.2, island="grass", corner_r=5.0, extra_road=None, extra_foot=None,
-                       footpath_uv=None, median_fn=None):
+                       footpath_uv=None, median_fn=None, alt=None):
+        """alt: [(set_of_classes, material, extra_geometry_or_None)] - e.g. cobbled lanes and squares."""
         carr = [r.line.buffer(r.cw / 2, cap_style="flat", join_style="round") for r in self.roads]
         carr += [Point(*c["c"]).buffer(c["ro"], 48) for c in self.circles]
         if extra_road is not None:
@@ -207,7 +208,17 @@ class City:
         median = unary_union(meds).difference(discs).intersection(road).simplify(0.03) if meds else Polygon()
         road_top = road.difference(median)
         self.geo.update(road=road, foot=foot, median=median, islands=islands, discs=discs, road_top=road_top)
-        K.tri_area("Roads", asphalt, road_top, 0.0)
+        rest = road_top
+        for classes, mat, extra in (alt or []):
+            own = [r.line.buffer(r.cw / 2 + 2.5, cap_style="flat") for r in self.roads if r.cls in classes]
+            others = [r.line.buffer(r.cw / 2, cap_style="flat") for r in self.roads if r.cls not in classes]
+            area = unary_union(own + ([extra] if extra is not None else []))
+            if others:
+                area = area.difference(unary_union(others))
+            area = area.intersection(rest)
+            K.tri_area("Roads", mat, area, 0.0)
+            rest = rest.difference(area)
+        K.tri_area("Roads", asphalt, rest, 0.0)
         K.tri_area("Footpaths", footpath, foot, self.fp_h, uvs_fn=footpath_uv)
         if not median.is_empty:
             if median_fn:
@@ -628,7 +639,7 @@ def ground(world, mat, far_mat, hole=None, z=-0.03):
     if hole is not None:
         g = g.difference(hole)
     K.tri_area("Terrain", mat, g, z)
-    F = 6000.0
+    F = 30000.0
     W = world
     for q in (((-F, -F), (F, -F), (F, W[1]), (-F, W[1])), ((-F, W[3]), (F, W[3]), (F, F), (-F, F)),
               ((-F, W[1]), (W[0], W[1]), (W[0], W[3]), (-F, W[3])), ((W[2], W[1]), (F, W[1]), (F, W[3]), (W[2], W[3]))):

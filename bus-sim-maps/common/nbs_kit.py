@@ -436,7 +436,7 @@ def setup_world(sun_elev=40, sun_az=140, sun_energy=4.2, sky_strength=0.35, dust
 def add_camera(name, loc, target, lens=28, ortho=None):
     cd = bpy.data.cameras.new(name)
     cd.lens = lens
-    cd.clip_end = 4000
+    cd.clip_end = 60000
     if ortho:
         cd.type = "ORTHO"
         cd.ortho_scale = ortho
