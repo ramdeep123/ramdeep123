@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Know Your Mind</string>
+    <string name="share_export">Save your Know Your Mind export</string>
+    <string name="no_app">No app found to open this</string>
+</resources>

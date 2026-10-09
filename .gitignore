@@ -4,3 +4,6 @@ android/*.keystore
 android/keystore.properties
 *.log
 .DS_Store
+mind/android/build/
+mind/android/*.keystore
+mind/android/keystore.properties

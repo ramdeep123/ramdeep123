@@ -1,0 +1,17 @@
+{
+  "name": "know-your-mind-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional backend for Know Your Mind: serves the web app and proxies the AI guide. Stateless, no logging of answers.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1"
+  },
+  "license": "UNLICENSED"
+}

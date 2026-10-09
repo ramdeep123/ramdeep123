@@ -1,0 +1,41 @@
+name: Know Your Mind — test & build APK
+
+on:
+  push:
+    paths: ['mind/**', '.github/workflows/mind.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests (engine, safety, privacy, server)
+        run: npm run test:mind
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Restore release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.MIND_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.MIND_KEYSTORE_PASSWORD }}
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > mind/android/mind-release.keystore
+          printf 'storeFile=mind-release.keystore\nstorePassword=%s\nkeyAlias=mind\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" > mind/android/keystore.properties
+
+      - name: Build signed APK
+        run: VERSION_CODE=${{ github.run_number }} bash mind/android/build-apk.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KnowYourMind-apk
+          path: release/KnowYourMind-*.apk

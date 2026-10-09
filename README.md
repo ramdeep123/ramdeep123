@@ -2,6 +2,8 @@
 
 **A Relies Production app.** © 2026 Relies Production. All rights reserved — see [LICENSE](LICENSE).
 
+> **New in this repo: [Know Your Mind](mind/README.md)** — a private self-mapping app. Answer simple questions about real moments, get a map of how your mind works (thoughts, stress response, values, the habit loop) and a small daily plan. Android APK: [`release/KnowYourMind-0.1.0.apk`](release/KnowYourMind-0.1.0.apk).
+
 KAYA replaces the personal trainer with three things that work together:
 
 - **An animated coach** that demonstrates every move, with tempo, bar path and live joint angles.
